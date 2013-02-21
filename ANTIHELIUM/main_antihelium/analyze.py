@@ -25,7 +25,7 @@ def plotAntideuterons(filename):
     # Get a list of each different mass in the file   
     masses = np.sort(np.array(list(set(CMS))))
     
-    bins = np.logspace(-1, 2, 21)
+    bins = np.logspace(0, 2, 21)
     dbar,he3bar,tbar,he4bar = [],[],[],[]
     for i in range(len(masses)):
         print '\nDM Mass ', masses[i]/2., ' GeV'
