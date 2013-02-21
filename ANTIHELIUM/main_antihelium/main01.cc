@@ -1,10 +1,9 @@
-// main01.cc is a part of the PYTHIA event generator.
-// Copyright (C) 2012 Torbjorn Sjostrand.
-// PYTHIA is licenced under the GNU GPL version 2, see COPYING for details.
-// Please respect the MCnet Guidelines, see GUIDELINES for details.
-
-// This is a simple test program. It fits on one slide in a talk. 
-// It studies the charged multiplicity distribution at the LHC.
+//-------------------------------------------------------------------------
+// main01.cc
+// Author:Eric Carlson.
+// Run pythia for several different DM annihilation processes and check
+// check formation rates of anti-nuclei up to A=4
+//-------------------------------------------------------------------------
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -27,7 +26,7 @@ bool checkCoal(int numParticles, Vec4 p[]);
 void writeEvent(double CMS, int numParticles, Particle part[]);
 int main(int argc, char *argv[]);
 void analyzeEvent(double CMS, Event event);
-void pythiaThread(int numEvents, double CMS);
+void pythiaThread(int numEvents, double CMS, int seed, int process);
 
 //------------------------------------------------------------------------
 // Global Declarations
@@ -55,28 +54,46 @@ ofstream eventFile;
 /////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
 
-	if (argc != 2){
-		cout << "Please Specify an Event Filename." << endl;
+	if (argc != 3){
+		cout << "\nSYNTAX:\nmain01.exe <Event File> <Process>" << endl;
+		cout << "Processes:\n0: e+ e- -> z -> b bbar\n1: e+ e- -> z -> t tbar\n2: e+ e- -> z -> w+ w-\n3: e+ e- -> g g (NOT IMPLEMENTED YET)\n4: e+ e- -> h z "<< endl;
 		return 0;
 	}
 
-	int numEvents = 1000000; // Total number of events.  Will be distributed over threads.
+	//			0: e+ e- -> z -> b bbar
+	//			1: e+ e- -> z -> t tbar
+	// 			2: e+ e- -> z -> w+ w-
+	//			3: e+ e- -> g g // NOT IMPLEMENTED
+	//			4: e+ e- -> h z
+	int process = atoi(argv[2]);
+	int numEvents = (int) (1e7); // Total number of events.  Will be distributed over threads.
 
 	// Find number of CPUs
 	//long numCPU = sysconf( _SC_NPROCESSORS_ONLN );
-	long numCPU = 8;  // Uncomment to specify num CPUs
+	long numCPU = 4;  // Uncomment to specify num CPUs
 	cout << "Using " << numCPU << " CPUs..." << endl;
+	int seed;
 
 	// Initialize file writer
 	eventFile.open(argv[1]);
+	eventFile << "RUNDETAILS " << time(NULL)<< " " << numEvents << " " << process << endl;
 
-	double CMS[5] = {2,20,200,2000,20000};
+	int numMasses = 3;
+	double CMS[3] = {200,800,1600};
 
-	for (int massidx=0; massidx < 5; massidx++){
+	for (int massidx=0; massidx < numMasses; massidx++){
 		// Thread Array
 		boost::thread threads[numCPU];
+
+		// Reinit the RNG
+		//srand(time(NULL)*atoi(argv[3]));
+		srand(time(NULL));
+
 		// Start each thread
-		for (int i = 0 ; i < numCPU ; i++) threads[i] = boost::thread(pythiaThread, (int) (numEvents/4.), CMS[massidx]);
+		for (int i = 0 ; i < numCPU ; i++){
+			seed = (int) (abs(900000000*rand())); // this 9e8 is max seed to pass to RNG
+			threads[i] = boost::thread(pythiaThread, (int) (numEvents/numCPU), CMS[massidx], seed,process);
+		}
 
 		// Join threads
 		for (int i = 0 ; i < numCPU ; i++) threads[i].join();
@@ -86,6 +103,113 @@ int main(int argc, char *argv[]) {
 	cout << "Job Finsished!" << endl;
 	return 1; // 1 for success
 } // End Main
+
+
+
+//////////////////////////////////////////////////////////////////////////
+// pythiaThread starts a new instance of pythia for each thread.  This is
+// where pythia should be configured.
+// input:
+//	-numEvents: number of events to simulate
+//  -CMS: Center of mass energy
+//  -seed: random number seed
+//	-process:
+//			0: e+ e- -> z -> b bbar
+//			1: e+ e- -> z -> t tbar
+// 			2: e+ e- -> z -> w+ w-
+//			3: e+ e- -> g g // NOT IMPLEMENTED
+//			4: e+ e- -> h z
+//////////////////////////////////////////////////////////////////////////
+void pythiaThread(int numEvents, double CMS, int seed, int process)
+{
+	// Generator. Process selection. LHC initialization. Histogram.
+	Pythia pythia;
+
+	// Output Message every 10,000 events
+	pythia.readString("Next:numberCount = 10000.");
+
+	// Electron-Positron Collisions
+	std::stringstream s;
+	s << "Beams:eCM = " << CMS;
+	pythia.readString(s.str()); // CMS Energy in GeV
+	pythia.readString("Beams:idA = 11");
+	pythia.readString("Beams:idB = -11");
+
+	// Init Random number generator
+	pythia.rndm.init(seed); // Generate random seed for pseudo-random generator);
+
+	//---------------------------------------------------------------
+	// PROCESS SETTINGS
+	//---------------------------------------------------------------
+	//---------------------------------------------------------------
+	// e+ e- -> z -> b bbar
+	if (process == 0){
+		// Just turn on the weak single boson generation.
+		pythia.readString("WeakSingleBoson:ffbar2ffbar(s:gm) = on");
+		// Setup channels
+		pythia.readString("23:oneChannel = 1 1. 0 5");// Set Z (23) to just b b-bar decay products. Bright-Wigner tail of Z dominates at mass > ~91 GeV.
+		pythia.readString("22:onMode = off");// Disable photon channel (much slower)
+	}
+	//---------------------------------------------------------------
+	// e+ e- -> z -> t ttbar
+	else if (process == 1){
+		// Just turn on the weak single boson generation.
+		pythia.readString("WeakSingleBoson:ffbar2ffbar(s:gm) = on");
+		pythia.readString("23:oneChannel = 1 1. 0 6");// Set Z (23) to just b b-bar decay products. Bright-Wigner tail of Z dominates at mass > ~91 GeV.
+		pythia.readString("22:onMode = off");// Disable photon channel (much slower)
+
+	}
+	//---------------------------------------------------------------
+	// e+ e- -> z -> w+ w-
+	else if (process == 2){
+		// enable process
+		pythia.readString("WeakDoubleBoson:ffbar2WW = on");
+	}
+	//---------------------------------------------------------------
+	// e+ e- -> g g
+	else if (process == 3){
+		// enable process
+
+	}
+	//---------------------------------------------------------------
+	// e+ e- -> h z
+	else if (process == 4){
+		pythia.readString("HiggsSM:ffbar2HZ = on");
+	}
+
+
+
+
+	// Initialize pythia
+	pythia.init();
+
+	// record run time
+	time_t start;
+	start = time(NULL);
+
+	// Begin event loop. Generate event. Skip if error. List first one.
+	for (int iEvent = 0; iEvent < numEvents; ++iEvent){
+
+	  if (!pythia.next()) continue; // Did event succeed?
+
+	  analyzeEvent(CMS, pythia.event);
+
+	}// End Master Event Loop
+
+	//--------------------------------------------------------------------------
+	// Performance Statistics
+	//--------------------------------------------------------------------------
+	time_t end; //
+	//pythia.stat();
+	end = time(NULL);
+	int diff = difftime (end,start);
+	cout << "Time Elapsed for " << numEvents << " events: " << diff <<"s" << endl ;
+	cout << "Generated " << antideuteron << " antideuterons." << endl ;
+	//--------------------------------------------------------------------------
+
+	return;
+}
+
 
 
 
@@ -141,6 +265,7 @@ void writeEvent(double CMS, int numParticles, Particle part[]){
 		if (part[i].id()==PDG_pbar) {Z+=1; A+=1;}
 		else if (part[i].id() == PDG_nbar) {A+=1;}
 	}
+	cout<< total.e() << endl;
 
 	// Write to file  (CMS, A, Z, Particle Energy)
 	eventFile << CMS << " " << A << " " << Z << " " << total.e() << "\n";
@@ -224,65 +349,6 @@ void analyzeEvent(double CMS, Event event){
 
 
 
-//////////////////////////////////////////////////////////////////////////
-// pythiaThread starts a new instance of pythia for each thread.  This is
-// where pythia should be configured.
-// input:
-//	-numEvents: number of events to simulate
-//////////////////////////////////////////////////////////////////////////
-void pythiaThread(int numEvents, double CMS)
-{
-	// Generator. Process selection. LHC initialization. Histogram.
-	Pythia pythia;
-
-	// Output Message every 10,000 events
-	pythia.readString("Next:numberCount = 10000.");
-
-	// Electron-Positron Collisions
-	pythia.readString("Beams:eCM = 500."); // CMS Energy in GeV
-	pythia.readString("Beams:idA = 11");
-	pythia.readString("Beams:idB = -11");
-
-	// Init Random number generator
-	pythia.rndm.init((int) (abs(1000000*rand()))); // Generate random seed for pseudo-random generator);
-
-	// Just turn on the weak single boson generation.
-	pythia.readString("WeakSingleBoson:ffbar2ffbar(s:gm) = on");
-
-	// Set Z (23) to just b b-bar decay products. Bright-Wigner tail of Z dominates at mass > ~91 GeV.
-	pythia.readString("23:oneChannel = 1 1. 0 5");
-	// Disable photon channel (much slower)
-	pythia.readString("22:onMode = off");
-
-	// Initialize pythia
-	pythia.init();
-
-	// record run time
-	time_t start;
-	start = time(NULL);
-
-	// Begin event loop. Generate event. Skip if error. List first one.
-	for (int iEvent = 0; iEvent < numEvents; ++iEvent){
-
-	  if (!pythia.next()) continue; // Did event succeed?
-
-	  analyzeEvent(CMS, pythia.event);
-
-	}// End Master Event Loop
-
-	//--------------------------------------------------------------------------
-	// Performance Statistics
-	//--------------------------------------------------------------------------
-	time_t end; //
-	//pythia.stat();
-	end = time(NULL);
-	int diff = difftime (end,start);
-	cout << "Time Elapsed for " << numEvents << " events: " << diff <<"s" << endl ;
-	cout << "Generated " << antideuteron << " antideuterons." << endl ;
-	//--------------------------------------------------------------------------
-
-	return;
-}
 
 
 
