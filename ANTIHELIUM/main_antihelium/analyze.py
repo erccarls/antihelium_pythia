@@ -13,9 +13,11 @@ def plotAntideuterons(filename):
     f = open(filename, 'r')
     csvread = csv.reader(open(filename, 'rb'),delimiter = ' ' )
     
-    
+    numEvents = 0
     for line in csvread:
         if 'RUNDETAILS' in line:
+            numEvents = float(line[2])
+            print numEvents
             continue
         CMS.append(float(line[0]))
         A.append(float(line[1]))
@@ -25,7 +27,7 @@ def plotAntideuterons(filename):
     # Get a list of each different mass in the file   
     masses = np.sort(np.array(list(set(CMS))))
     
-    bins = np.logspace(0, 2, 21)
+    bins = np.logspace(0, 2, 11)
     dbar,he3bar,tbar,he4bar = [],[],[],[]
     for i in range(len(masses)):
         print '\nDM Mass ', masses[i]/2., ' GeV'
@@ -49,14 +51,30 @@ def plotAntideuterons(filename):
     
         values, bins = np.histogram(dbar[i], bins = bins)
         for x in range(len(values)):
-            values[i]/= (bins[i+1]-bins[i]) 
-        plt.step(bins[:-1], values,label = str(masses[i]/2.)+' GeV')
+            values[i]/= (bins[i+1]-bins[i])
+        plt.step(bins[:-1], values/numEvents,label = str(masses[i]/2.)+' GeV')
         
     plt.ylabel('dN/dE (count/GeV)')
     plt.xlabel('E (GeV)')
     plt.xscale('log')
     plt.yscale('log')
+    plt.ylim(10**-7, 10**-3)
     plt.legend()
-    plt.show()
-     
-plotAntideuterons(sys.argv[1])
+
+    
+fig = plt.figure(1, (24,18))
+plt.subplot(221)
+plt.text(10, 2*10**-4, 'ww')
+plotAntideuterons('events_ww.txt')
+
+plt.subplot(222)
+plt.text(10, 2*10**-4, 't-tbar')
+plotAntideuterons('events_ttbar.txt')
+
+plt.subplot(223)
+plt.text(10, 2*10**-4, 'b-bbar')
+plotAntideuterons('events_bbbar.txt')
+
+plt.show()
+
+

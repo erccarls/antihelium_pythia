@@ -66,11 +66,11 @@ int main(int argc, char *argv[]) {
 	//			3: e+ e- -> g g // NOT IMPLEMENTED
 	//			4: e+ e- -> h z
 	int process = atoi(argv[2]);
-	int numEvents = (int) (1e7); // Total number of events.  Will be distributed over threads.
+	int numEvents = (int) (1e8); // Total number of events.  Will be distributed over threads.
 
 	// Find number of CPUs
 	//long numCPU = sysconf( _SC_NPROCESSORS_ONLN );
-	long numCPU = 4;  // Uncomment to specify num CPUs
+	long numCPU = 8;  // Uncomment to specify num CPUs
 	cout << "Using " << numCPU << " CPUs..." << endl;
 	int seed;
 
@@ -78,8 +78,11 @@ int main(int argc, char *argv[]) {
 	eventFile.open(argv[1]);
 	eventFile << "RUNDETAILS " << time(NULL)<< " " << numEvents << " " << process << endl;
 
-	int numMasses = 3;
-	double CMS[3] = {200,800,1600};
+	//int numMasses = 3;
+	//double CMS[3] = {200,800,1600};
+	int numMasses = 1;
+	double CMS[1] = {1600};
+
 
 	for (int massidx=0; massidx < numMasses; massidx++){
 		// Thread Array
@@ -177,6 +180,13 @@ void pythiaThread(int numEvents, double CMS, int seed, int process)
 		pythia.readString("HiggsSM:ffbar2HZ = on");
 	}
 
+
+	// Limit decay length to be within 50fm
+	pythia.readString("ParticleDecays:limitTau0 = on");
+	pythia.readString("ParticleDecays:tau0Max = 5.e-11"); // in mm/c
+
+	parm  ParticleDecays:tau0Max   (default = 10.; minimum = 0.)
+	The above tau0Max, expressed in mm/c.
 
 
 
@@ -278,7 +288,7 @@ void writeEvent(double CMS, int numParticles, Particle part[]){
 /////////////////////////////////////////////////////////////////
 void analyzeEvent(double CMS, Event event){
 	// Store antinucleon lists
-	int pbarList [20];     for (int i=0; i<20; i++) pbarList[i] = -1;
+	int pbarList [100];     for (int i=0; i<100; i++) pbarList[i] = -1;
 	int antiNucIndex = 0;
 
 	for (int i = 0; i < event.size(); ++i){
@@ -290,6 +300,7 @@ void analyzeEvent(double CMS, Event event){
 			//cout << " pbar: "<< pythia.event[i].p();
 		}// nucleon test
 	} // particle loop
+
 
 	if (antiNucIndex > 1)
 	{
