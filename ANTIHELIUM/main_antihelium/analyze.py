@@ -15,6 +15,8 @@ def plotAntideuterons(filename):
     
     
     for line in csvread:
+        if 'RUNDETAILS' in line:
+            continue
         CMS.append(float(line[0]))
         A.append(float(line[1]))
         Z.append(float(line[2]))
@@ -48,7 +50,7 @@ def plotAntideuterons(filename):
         values, bins = np.histogram(dbar[i], bins = bins)
         for x in range(len(values)):
             values[i]/= (bins[i+1]-bins[i]) 
-        plt.step(bins[:-1], values/(bins[1]-bins[0]),label = str(masses[i]/2.))
+        plt.step(bins[:-1], values,label = str(masses[i]/2.)+' GeV')
         
     plt.ylabel('dN/dE (count/GeV)')
     plt.xlabel('E (GeV)')
@@ -57,4 +59,4 @@ def plotAntideuterons(filename):
     plt.legend()
     plt.show()
      
-plotAntideuterons("run_10-10000_1e6_events.txt")
+plotAntideuterons(sys.argv[1])
