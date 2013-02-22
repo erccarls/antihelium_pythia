@@ -182,12 +182,8 @@ void pythiaThread(int numEvents, double CMS, int seed, int process)
 
 
 	// Limit decay length to be within 50fm
-	pythia.readString("ParticleDecays:limitTau0 = on");
-	pythia.readString("ParticleDecays:tau0Max = 5.e-11"); // in mm/c
-
-	parm  ParticleDecays:tau0Max   (default = 10.; minimum = 0.)
-	The above tau0Max, expressed in mm/c.
-
+	//pythia.readString("ParticleDecays:limitTau0 = on");
+	//pythia.readString("ParticleDecays:tau0Max = 5.e-11"); // in mm/c
 
 
 	// Initialize pythia
@@ -201,7 +197,6 @@ void pythiaThread(int numEvents, double CMS, int seed, int process)
 	for (int iEvent = 0; iEvent < numEvents; ++iEvent){
 
 	  if (!pythia.next()) continue; // Did event succeed?
-
 	  analyzeEvent(CMS, pythia.event);
 
 	}// End Master Event Loop
