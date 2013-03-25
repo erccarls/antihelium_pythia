@@ -31,7 +31,7 @@ void pythiaThread(int numEvents, double CMS, int seed, int process);
 //------------------------------------------------------------------------
 // Global Declarations
 //------------------------------------------------------------------------
-double pCoal = .160; // Coalesence momentum in GeV
+double pCoal =  .160; // Coalesence momentum in GeV
 int antideuteron = 0; // Number of antideuterons
 int antihelium3  = 0;
 int antihelium4  = 0;
@@ -54,8 +54,8 @@ ofstream eventFile;
 /////////////////////////////////////////////////////////////////////////
 int main(int argc, char *argv[]) {
 
-	if (argc != 3){
-		cout << "\nSYNTAX:\nmain01.exe <Event File> <Process>" << endl;
+	if (argc != 4){
+		cout << "\nSYNTAX:\nmain01.exe <Event File> <Process> <p_coal (GeV)>" << endl;
 		cout << "Processes:\n0: e+ e- -> z -> b bbar\n1: e+ e- -> z -> t tbar\n2: e+ e- -> z -> w+ w-\n3: e+ e- -> g g (NOT IMPLEMENTED YET)\n4: e+ e- -> h z "<< endl;
 		return 0;
 	}
@@ -66,11 +66,12 @@ int main(int argc, char *argv[]) {
 	//			3: e+ e- -> g g // NOT IMPLEMENTED
 	//			4: e+ e- -> h z
 	int process = atoi(argv[2]);
-	int numEvents = (int) (1e8); // Total number of events.  Will be distributed over threads.
+	pCoal = atof(argv[3]);
+	int numEvents = (int) (1e4); // Total number of events.  Will be distributed over threads.
 
 	// Find number of CPUs
 	//long numCPU = sysconf( _SC_NPROCESSORS_ONLN );
-	long numCPU = 8;  // Uncomment to specify num CPUs
+	long numCPU = 1;  // Uncomment to specify num CPUs
 	cout << "Using " << numCPU << " CPUs..." << endl;
 	int seed;
 
@@ -270,10 +271,10 @@ void writeEvent(double CMS, int numParticles, Particle part[]){
 		if (part[i].id()==PDG_pbar) {Z+=1; A+=1;}
 		else if (part[i].id() == PDG_nbar) {A+=1;}
 	}
-	cout<< total.e() << endl;
+	//cout<< total.e() << endl;
 
 	// Write to file  (CMS, A, Z, Particle Energy)
-	eventFile << CMS << " " << A << " " << Z << " " << total.e() << "\n";
+	eventFile << CMS << " " << A << " " << Z << " " << total.e() << " " << pCoal << "\n";
 }
 
 /////////////////////////////////////////////////////////////////
@@ -286,6 +287,8 @@ void analyzeEvent(double CMS, Event event){
 	int pbarList [100];     for (int i=0; i<100; i++) pbarList[i] = -1;
 	int antiNucIndex = 0;
 
+	
+
 	for (int i = 0; i < event.size(); ++i){
 		Particle& part = event[i];
 
@@ -295,13 +298,17 @@ void analyzeEvent(double CMS, Event event){
 			//cout << " pbar: "<< pythia.event[i].p();
 		}// nucleon test
 	} // particle loop
+	
 
-
-	if (antiNucIndex > 1)
+	if (antiNucIndex > 0)
 	{
 	  // loop over all antinucleon pairs (upper-triangle only to avoid double analysis)
 	  for (int i = 0; i<antiNucIndex ; i++){
 		  Particle& part1 = event[pbarList[i]];
+
+		  Particle partArray[1] = {part1};  // Output anti-protons and anti-neutrons
+		  writeEvent(CMS, 1, partArray);
+
 		  for (int j = i+1; j< antiNucIndex ; j++){
 			  Particle& part2 = event[pbarList[j]];
 
@@ -311,7 +318,7 @@ void analyzeEvent(double CMS, Event event){
 			  // Check coalesence condition for antideuterons
 			  if (checkCoal(2, pVecs) == true){
 				antideuteron +=1 ;
-				cout << "Antideuteron!!!" << endl;
+				//cout << "Antideuteron!!!" << endl;
 				// Write event to file
 				Particle partArray[2] = {part1, part2};
 				writeEvent(CMS, 2, partArray);
@@ -344,7 +351,6 @@ void analyzeEvent(double CMS, Event event){
 						  cout << "Antihelium 4!!!" << endl;
 						  Particle partArray[4] = {part1, part2, part3, part4};
 						  writeEvent(CMS, 4, partArray);
-
 					  }
 				  }// end l
 			  }// end k
