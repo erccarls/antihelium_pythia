@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 	//			4: e+ e- -> h z
 	int process = atoi(argv[2]);
 	pCoal = atof(argv[3]);
-	int numEvents = (int) (1e4); // Total number of events.  Will be distributed over threads.
+	int numEvents = (int) (1e5); // Total number of events.  Will be distributed over threads.
 
 	// Find number of CPUs
 	//long numCPU = sysconf( _SC_NPROCESSORS_ONLN );
@@ -80,9 +80,9 @@ int main(int argc, char *argv[]) {
 	eventFile << "RUNDETAILS " << time(NULL)<< " " << numEvents << " " << process << endl;
 
 	//int numMasses = 3;
-	//double CMS[3] = {200,800,1600};
-	int numMasses = 1;
-	double CMS[1] = {1600};
+	double CMS[4] = {20,200,1000,2000};
+	int numMasses = 4;
+
 
 
 	for (int massidx=0; massidx < numMasses; massidx++){
@@ -268,8 +268,10 @@ void writeEvent(double CMS, int numParticles, Particle part[]){
 		// Energy
 		total.operator +=(part[i].p());
 		// Charge and Mass
-		if (part[i].id()==PDG_pbar) {Z+=1; A+=1;}
+		if (part[i].id()==PDG_pbar) {Z-=1; A+=1;}
 		else if (part[i].id() == PDG_nbar) {A+=1;}
+		else if (part[i].id()==-PDG_pbar) {Z-=1; A+=1;}
+		else if (part[i].id() == -PDG_nbar) {A+=1;}
 	}
 	//cout<< total.e() << endl;
 
@@ -285,7 +287,9 @@ void writeEvent(double CMS, int numParticles, Particle part[]){
 void analyzeEvent(double CMS, Event event){
 	// Store antinucleon lists
 	int pbarList [100];     for (int i=0; i<100; i++) pbarList[i] = -1;
+	int pList [100];     for (int i=0; i<100; i++) pList[i] = -1;
 	int antiNucIndex = 0;
+	int NucIndex = 0;
 
 	
 
@@ -297,8 +301,24 @@ void analyzeEvent(double CMS, Event event){
 			antiNucIndex +=1;
 			//cout << " pbar: "<< pythia.event[i].p();
 		}// nucleon test
+
+		else if (part.isFinal() && (part.id() == -PDG_pbar || part.id() == -PDG_nbar)){
+			pList[NucIndex] = i;
+			NucIndex +=1;
+		}// nucleon test
+
 	} // particle loop
 	
+	if (NucIndex > 0)
+	{
+	  for (int i = 0; i<NucIndex ; i++){
+		  Particle& part1 = event[pbarList[i]];
+
+		  Particle partArray[1] = {part1};  // Output protons and neutrons
+		  writeEvent(CMS, 1, partArray);
+	  }
+	}
+
 
 	if (antiNucIndex > 0)
 	{

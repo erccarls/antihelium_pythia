@@ -18,6 +18,7 @@ def plotAntideuterons(filename):
         if ('RUNDETAILS' in line or len(line) != 5):
             continue
 	try:
+		print line
 		CMS.append(float(line[0]))
 		A.append(float(line[1]))
 		Z.append(float(line[2]))

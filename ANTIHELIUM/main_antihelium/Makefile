@@ -22,7 +22,7 @@ LIBDIRARCH=lib/archive
 BINDIR=bin
 
 #CXX = g++-4.6
-POSTCXXFLAGS = -lboost_thread
+POSTCXXFLAGS = -lboost_thread-mt
 
 # Libraries to include if GZIP support is enabled
 ifeq (x$(ENABLEGZIP),xyes)
